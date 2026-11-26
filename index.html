@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probability of a White Thanksgiving · CONUS</title>
+<meta name="description" content="Historical probability of at least 1 inch of snow on the ground on Thanksgiving Day across the contiguous U.S., from NOAA NCEI 1991–2020 Climate Normals, in NOAA's Lambert Conformal Conic projection.">
+<script>
+  /* Set the theme before first paint (saved choice, else the OS preference). */
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('wt-theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A6%83%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="demo-banner" class="banner" role="note" hidden>
+  <span aria-hidden="true">⚠</span> <strong>DEMO DATA</strong> — synthetic stations and terrain for layout testing. This is not NOAA data.
+</div>
+
+<header class="page head">
+  <div>
+    <h1>Probability of a White Thanksgiving</h1>
+    <p class="sub">Historical chance of at least <strong>1&nbsp;inch of snow on the ground</strong> on Thanksgiving Day across the contiguous U.S. <span id="when">(mean of Nov&nbsp;22–28, the dates it can fall on)</span> · <span id="period">1991–2020 U.S. Climate Normals</span></p>
+  </div>
+  <div class="theme" role="group" aria-label="Colour theme">
+    <button type="button" data-theme-set="light" aria-pressed="false"><span aria-hidden="true">☀</span> Light</button>
+    <button type="button" data-theme-set="dark" aria-pressed="true"><span aria-hidden="true">☾</span> Dark</button>
+  </div>
+</header>
+
+<section class="kpis" aria-label="Headline figures">
+  <div class="tile">
+    <div class="hero" id="kpi-high">–</div>
+    <div class="lbl">of the contiguous U.S. land area has a <b><span id="kpi-hi-t">25</span>% or better</b> chance</div>
+  </div>
+  <div class="tile">
+    <div class="hero" id="kpi-low">–</div>
+    <div class="lbl">of the contiguous U.S. land area has a <b><span id="kpi-lo-t">10</span>% or lower</b> chance</div>
+  </div>
+  <div class="tile">
+    <div class="hero" id="kpi-n">–</div>
+    <div class="lbl">weather stations in NOAA’s daily normals</div>
+  </div>
+</section>
+
+<section class="toolbar" aria-label="Map controls">
+  <label class="chk"><input type="checkbox" id="t-stations"> Stations</label>
+  <label class="chk"><input type="checkbox" id="t-relief" checked> Terrain relief</label>
+  <label class="rng"><span class="sr">Relief strength</span><input type="range" id="r-relief" min="0" max="100" value="65" aria-label="Relief strength"></label>
+  <label class="chk"><input type="checkbox" id="t-lines"> State lines</label>
+  <label class="chk"><input type="checkbox" id="t-labels"> Place labels</label>
+  <label class="chk"><input type="checkbox" id="t-hover" checked> Hover info</label>
+  <label class="chk"><input type="checkbox" id="t-wide"> Wide map</label>
+  <div class="find">
+    <input type="search" id="find" placeholder="Find a station…" autocomplete="off" aria-label="Find a station" aria-controls="find-results">
+    <ul id="find-results" role="listbox" hidden></ul>
+  </div>
+</section>
+<main class="layout" id="layout">
+  <div class="mapwrap">
+    <div id="map" aria-label="Map of the probability of a white Thanksgiving. Click a point to see the nearest weather station."></div>
+    <p id="map-error" class="map-error" hidden></p>
+  </div>
+
+  <aside class="side">
+    <section class="card" aria-labelledby="h-read">
+      <h2 id="h-read">At this point</h2>
+      <div id="readout" aria-live="polite">
+        <p class="hint">Click anywhere on the map to see the estimated chance of a white Thanksgiving there and the nearest station’s value, or search for a station.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-area">
+      <h2 id="h-area">Stations by chance</h2>
+      <p id="view-count" class="view-count" aria-live="polite"></p>
+      <ul id="classes" class="classes"></ul>
+      <details class="tableview">
+        <summary>Table view</summary>
+        <table id="class-table">
+          <thead><tr><th scope="col">Chance</th><th scope="col">Stations</th><th scope="col">Share</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </details>
+    </section>
+  </aside>
+</main>
+
+<footer class="page foot">
+<details>
+<summary>About this map</summary>
+  <p><strong>Map.</strong> A grid of roughly 0.6-mile cells in NOAA’s projection (North America Lambert Conformal Conic, ESRI:102009), drawn in NOAA’s colour ramp with eight classes spread over the Thanksgiving range. NOAA publishes the station values but no grid, so the surface is estimated from them using a <span id="method">terrain-aware</span> method.<span id="dem"></span> Terrain relief is a hillshade of that elevation data. <span id="cv"></span> The estimate is a model between stations, not a measurement; where stations are sparse, mountains in particular, it can be off by more.</p>
+  <p><strong>Stations.</strong> Dots, search and the station table use the station values from NOAA NCEI’s daily Climate Normals, element <code>DLY-SNWD-PCTALL-GE001WI</code> (<a id="src-link" href="https://www.ncei.noaa.gov/products/land-based-station/us-climate-normals">source</a> · <a href="data/stations.csv">stations.csv</a>). Thanksgiving is the fourth Thursday of November, so it can fall on any date from Nov&nbsp;22 to Nov&nbsp;28; the map shows the average of those seven dates (<span id="date-note">the daily values differ by only a point or two at most stations</span>). Climatology is not a forecast; check <a href="https://www.weather.gov/">weather.gov</a> within a week of the holiday.</p>
+  <p><strong>Credits.</strong> <span id="credit"></span> Elevation: AWS Open Data Terrain Tiles. State lines and place labels: Natural Earth. <span id="built"></span></p>
+</details>
+</footer>
+
+<script src="leaflet.js"></script>
+<script src="proj4.js"></script>
+<script src="proj4leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
